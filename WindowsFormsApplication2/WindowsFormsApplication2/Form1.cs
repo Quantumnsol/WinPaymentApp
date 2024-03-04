@@ -33,9 +33,9 @@ namespace WindowsFormsApplication2
         [DllImport("SPCNSecuCAT.dll", CallingConvention = CallingConvention.StdCall)]
         public static extern int SPCNSecuCAT_Print(int com_port, int baud_rate, byte[] input_msg, int input_len, int isHex);
 
-        ChromiumWebBrowser ChromeBrowser = new ChromiumWebBrowser();
         SerialPort SerialPort;
         string past_suc;
+        ChromiumWebBrowser ChromeBrowser;
 
         public Form1()
         {
@@ -44,7 +44,7 @@ namespace WindowsFormsApplication2
             if (!Cef.IsInitialized)
             {
                 initCefSharp();
-                webLogin();
+             //   webLogin();
             }
         }
 
@@ -72,18 +72,37 @@ namespace WindowsFormsApplication2
         public void initCefSharp()
         {
             // 브라우저 설정 초기화
+            CefSettings settings = new CefSettings();
+        //    settings.CachePath = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData) + @"\CEF";
+            Cef.Initialize(settings);
+            ChromeBrowser = new ChromiumWebBrowser();
             WindowState = FormWindowState.Maximized;
             ChromeBrowser.Location = new Point(0, 0);
-            
+
+#if DEBUG  
             // Local hosting
             ChromeBrowser.LoadUrl("https://localhost:49862/");
-            ChromeBrowser.Dock = DockStyle.Fill;
+#else
+            ChromeBrowser.LoadUrl("https://");
+#endif
+            
             this.panel1.Controls.Add(ChromeBrowser);
+            ChromeBrowser.Dock = DockStyle.Fill;
+            ChromeBrowser.LoadingStateChanged += OnLoadingStateChanged;
 
             ChromeBrowser.JavascriptObjectRepository.Settings.LegacyBindingEnabled = true;
             ChromeBrowser.JavascriptObjectRepository.Register("cAPI", new ChromeAPI(), false, BindingOptions.DefaultBinder);
         }
+
         #endregion
+
+        private void OnLoadingStateChanged(object sender, LoadingStateChangedEventArgs args)
+        {
+            if (!args.IsLoading)
+            {
+                webLogin();
+            }
+        }
 
         #region 결제 및 취소 - PaymentProcess
         /// <summary>
@@ -484,7 +503,7 @@ namespace WindowsFormsApplication2
             }
         }
         #endregion
-       
+            
         #region 로그인 처리(윈폼 -> 웹 페이지 함수 호출) 
         /// <summary>
         /// 로그인 처리
@@ -499,8 +518,9 @@ namespace WindowsFormsApplication2
             ChromeBrowser.ExecuteScriptAsync("document.getElementById('txtUseId').value=" + '\'' + sId + '\'');
             ChromeBrowser.ExecuteScriptAsync("document.getElementById('txtPwd').value=" + '\'' + sPwd + '\'');
 
-            await Task.Delay(1500);
+            await Task.Delay(1000);
             ChromeBrowser.ExecuteScriptAsync("document.getElementById('btnLogin').submit();");
+            
         }
         #endregion
 
@@ -641,24 +661,25 @@ namespace WindowsFormsApplication2
         }
 
         #endregion
+
     }
 
 
     public class ChromeAPI
     {
-        ChromiumWebBrowser ChromeBrowser = new ChromiumWebBrowser();
-        CefSettings cefSettings = new CefSettings();
 
         public void showMsg(string sParam)
         {
             if (Cef.IsInitialized)
             {
-           //     MessageBox.Show(sParam + " ----- Pay");
                 Form1 form = new Form1();
                 form.PaymentProcess(sParam); 
             }
             else
             {
+                ChromiumWebBrowser ChromeBrowser = new ChromiumWebBrowser();
+                CefSettings cefSettings = new CefSettings();
+
                 Cef.Initialize(cefSettings);
                 MessageBox.Show("IsInitialized is required");
             }
