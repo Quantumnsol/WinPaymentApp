@@ -127,16 +127,20 @@ namespace WindowsFormsApplication2
             Array.Clear(rep_array, 0, rep_array.Length);
             this.textBox_recv.Text = "";
 
-            string reqType = "Z0";      // 전문구분
-            string type = "S0";         // 거래유형
-            string sSignSend = string.Empty;
-            string sAmount = string.Empty;
+            string reqType = "ZA";                // 전문구분(Z0, Z6, ZA...)
+            string type = "";                   // 거래유형(S0, S4, C0....)
+            string sSignSend = string.Empty;    // 서명여부
+            string sAmount = string.Empty;      // 금액
+            string sInstallCnt = "00";          // 할부개월(00, 03, 06...)
+
             if (!string.IsNullOrEmpty(sParam) && sParam.Length > 8)
             {
                 string[] arrParam = sParam.Split('^');
                 type = arrParam[0].ToString();
                 sAmount = arrParam[1].ToString();  
-                sSignSend = arrParam[2].ToString();
+             //   sSignSend = arrParam[2].ToString();
+                sInstallCnt = arrParam[2].ToString();
+           //     reqType = type.Equals("S0") && sSignSend.Equals("1") ? "Z6" : "Z0";
             }
             else
             {
