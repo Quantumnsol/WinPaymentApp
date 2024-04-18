@@ -83,9 +83,9 @@ namespace WindowsFormsApplication2
             // Local hosting
             ChromeBrowser.LoadUrl("https://localhost:49862/");
 #else
-            ChromeBrowser.LoadUrl("https://");
+            ChromeBrowser.LoadUrl("https://localhost:50521/");
 #endif
-            
+
             this.panel1.Controls.Add(ChromeBrowser);
             ChromeBrowser.Dock = DockStyle.Fill;
             ChromeBrowser.LoadingStateChanged += OnLoadingStateChanged;
