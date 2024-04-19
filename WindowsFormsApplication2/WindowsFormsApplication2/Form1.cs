@@ -84,12 +84,12 @@ namespace WindowsFormsApplication2
 
 #if DEBUG  
             // Local hosting
-            ChromeBrowser.LoadUrl("https://localhost:49862/");
+            ChromeBrowser.LoadUrl("http://admin1.xmx.kr/");//   
 #else
-            ChromeBrowser.LoadUrl("https://localhost:50521/");
+            ChromeBrowser.LoadUrl("http://admin1.xmx.kr/");
 #endif
 
-            this.panel1.Controls.Add(ChromeBrowser);
+			this.panel1.Controls.Add(ChromeBrowser);
             ChromeBrowser.Dock = DockStyle.Fill;
             ChromeBrowser.LoadingStateChanged += OnLoadingStateChanged;
 
