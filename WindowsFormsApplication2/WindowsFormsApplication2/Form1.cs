@@ -261,7 +261,7 @@ namespace WindowsFormsApplication2
 
 #if DEBUG
                 // Test
-                s_comport = "COM3";
+                s_comport = "COM4";
                 com_len = s_comport.Length;
                 comport = Convert.ToInt32(s_comport.Substring(3, com_len - 3));  // 3 
                 baudrate = 38400;
@@ -689,7 +689,7 @@ namespace WindowsFormsApplication2
 
 #if DEBUG
             // Test
-            s_comport = "COM3";
+            s_comport = "COM4";
             com_len = s_comport.Length;
             comport = Convert.ToInt32(s_comport.Substring(3, com_len - 3));  // 3 
             baudrate = 38400;
