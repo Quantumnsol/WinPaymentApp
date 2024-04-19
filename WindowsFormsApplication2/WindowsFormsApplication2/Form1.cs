@@ -31,7 +31,10 @@ namespace WindowsFormsApplication2
         public static extern int SPCNSecuCAT_GetBMPFileFromSignData(int sign_len, byte[] sign_data, byte[] file_path);
 
         [DllImport("SPCNSecuCAT.dll", CallingConvention = CallingConvention.StdCall)]
-        public static extern int SPCNSecuCAT_Print(int com_port, int baud_rate, byte[] input_msg, int input_len, int isHex);
+        public static extern int SPCNSecuCAT_Print(int comport, int baud, string input_msg, int input_len, int isHex);
+
+        [DllImport("SPCNSecuCAT.dll", CallingConvention = CallingConvention.StdCall)]
+        public static extern void SPCNSecuCAT_ConvertToHex(int ascii_data_len, string ascii_data, byte[] output_msg);
 
         SerialPort SerialPort;
         string past_suc;
@@ -44,7 +47,7 @@ namespace WindowsFormsApplication2
             if (!Cef.IsInitialized)
             {
                 initCefSharp();
-             //   webLogin();
+                //   webLogin();
             }
         }
 
@@ -73,7 +76,7 @@ namespace WindowsFormsApplication2
         {
             // 브라우저 설정 초기화
             CefSettings settings = new CefSettings();
-        //    settings.CachePath = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData) + @"\CEF";
+            //    settings.CachePath = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData) + @"\CEF";
             Cef.Initialize(settings);
             ChromeBrowser = new ChromiumWebBrowser();
             WindowState = FormWindowState.Maximized;
@@ -127,20 +130,20 @@ namespace WindowsFormsApplication2
             Array.Clear(rep_array, 0, rep_array.Length);
             this.textBox_recv.Text = "";
 
-            string reqType = "ZA";                // 전문구분(Z0, Z6, ZA...)
+            string reqType = "Z0";                // 전문구분(Z0, Z6, ZA...)
             string type = "";                   // 거래유형(S0, S4, C0....)
             string sSignSend = string.Empty;    // 서명여부
             string sAmount = string.Empty;      // 금액
-            string sInstallCnt = "00";          // 할부개월(00, 03, 06...)
+            string sInstallCnt = "";          // 할부개월(00, 03, 06...)
 
             if (!string.IsNullOrEmpty(sParam) && sParam.Length > 8)
             {
                 string[] arrParam = sParam.Split('^');
                 type = arrParam[0].ToString();
-                sAmount = arrParam[1].ToString();  
-             //   sSignSend = arrParam[2].ToString();
+                sAmount = arrParam[1].ToString();
+                //   sSignSend = arrParam[2].ToString();
                 sInstallCnt = arrParam[2].ToString();
-           //     reqType = type.Equals("S0") && sSignSend.Equals("1") ? "Z6" : "Z0";
+                //     reqType = type.Equals("S0") && sSignSend.Equals("1") ? "Z6" : "Z0";
             }
             else
             {
@@ -255,7 +258,7 @@ namespace WindowsFormsApplication2
                 // 요청전문 출력
                 this.textBox_send.Text = req.ToString();
                 req_array = System.Text.Encoding.UTF8.GetBytes(req.ToString());
-                
+
 #if DEBUG
                 // Test
                 s_comport = "COM3";
@@ -281,6 +284,7 @@ namespace WindowsFormsApplication2
                 {
                     //    past_suc = rep;
                     this.textBox_recv.Text = rep;
+                    PaymentPrint(type);
                     //   ParseResponseData();
                 }
             }
@@ -457,12 +461,12 @@ namespace WindowsFormsApplication2
                 }
                 else
                 {
-                //    past_suc = rep;
+                    //    past_suc = rep;
                     textBox_recv.Text = rep;
-                 //   ParseResponseData();
+                    //   ParseResponseData();
 
                     // Web API 호출
-                   // callWebApi();
+                    // callWebApi();
                 }
             }
             catch (Exception ex)
@@ -507,7 +511,7 @@ namespace WindowsFormsApplication2
             }
         }
         #endregion
-            
+
         #region 로그인 처리(윈폼 -> 웹 페이지 함수 호출) 
         /// <summary>
         /// 로그인 처리
@@ -524,7 +528,7 @@ namespace WindowsFormsApplication2
 
             await Task.Delay(1000);
             ChromeBrowser.ExecuteScriptAsync("document.getElementById('btnLogin').submit();");
-            
+
         }
         #endregion
 
@@ -598,7 +602,7 @@ namespace WindowsFormsApplication2
                 myLen = myLen - item.Length;
 
                 for (int i = 0; i < myLen; i++)
-                    target.Append(" ");   
+                    target.Append(" ");
 
                 return target;
             }
@@ -611,7 +615,7 @@ namespace WindowsFormsApplication2
             {
                 for (int i = 0; i < myLen; i++)
                     target.Append(item[i]);
-                
+
                 return target;
             }
         }
@@ -666,7 +670,95 @@ namespace WindowsFormsApplication2
 
         #endregion
 
+        #region 프린트
+        private void PaymentPrint(string sPayType)
+        {
+            int rc = -1;
+            string s_comport;
+            int com_len;
+            int comport;
+            int baudrate;
+            string printerMsg = "";
+            int printerMsgLen = 0;
+            byte[] output_msg = new byte[10000];
+            string sendData = "";
+
+            Array.Clear(output_msg, 0, output_msg.Length);
+
+            
+
+#if DEBUG
+            // Test
+            s_comport = "COM3";
+            com_len = s_comport.Length;
+            comport = Convert.ToInt32(s_comport.Substring(3, com_len - 3));  // 3 
+            baudrate = 38400;
+#else
+            s_comport = combobox_port.SelectedItem.ToString();
+            com_len = s_comport.Length;
+            comport = Convert.ToInt32(s_comport.Substring(3, com_len - 3));
+            baudrate = Convert.ToInt32(combobox_baudrate.SelectedItem.ToString());
+#endif
+
+            // 프린터 초기화
+            sendData = "1b400a";
+
+            // 가로확대
+            sendData += "1b2120";
+
+            // 가운데정렬
+            sendData += "1b6101";
+
+            // 프린트 데이터
+            printerMsg = sPayType.Equals("S0") ? "신용승인\n" : sPayType.Equals("C0") ? "현금승인\n" : sPayType.Equals("C1") ? "현금취소\n" : "신용취소\n";
+
+            printerMsgLen = System.Text.Encoding.Default.GetByteCount(printerMsg); // 바이트 수 계산(한글은 2바이트로 계산)
+            Array.Clear(output_msg, 0, output_msg.Length); // 버퍼 초기화
+            SPCNSecuCAT_ConvertToHex(printerMsgLen, printerMsg, output_msg); // Hex String으로 변환 (DLL 제공)
+            sendData += System.Text.Encoding.Default.GetString(output_msg).Trim('\0'); // Hex String 데이터 크기 만큼 자르기
+
+            // 가로확대취소
+            sendData += "1b2100";
+
+            // 왼쪽 정렬
+            sendData += "1b6100";
+            SPCNSecuCAT_Print(comport, baudrate, sendData, System.Text.Encoding.Default.GetByteCount(sendData), 1);
+
+            sendData = "";
+            printerMsg = "\n\n";
+            printerMsg += "거래일시                              2019-11-21\n";
+            printerMsg += "단말기번호                            9000001002\n";
+            printerMsg += "승인번호                                12345678\n";
+            printerMsg += "------------------------------------------------\n";
+            printerMsg += "------------------------------------------------\n";
+            printerMsg += "품목                수량                    단가\n";
+            printerMsg += "------------------------------------------------\n";
+            printerMsg += "과목 1                 1               300,000원\n";
+            printerMsg += "과목 2                 1               300,000원\n";
+            printerMsg += "과목 3                 1               400,000원\n";
+            printerMsg += "------------------------------------------------\n";
+            printerMsg += "------------------------------------------------\n";
+            printerMsg += "판매금액                             1,000,000원\n";
+            printerMsg += "세    금                               100,000원\n";
+            printerMsg += "합    계                             1,100,000원\n";
+            printerMsg += "\n\n\n\n\n";
+
+            printerMsgLen = System.Text.Encoding.Default.GetByteCount(printerMsg); // 바이트 수 계산(한글은 2바이트)
+            Array.Clear(output_msg, 0, output_msg.Length); // 버퍼 초기화
+            SPCNSecuCAT_ConvertToHex(printerMsgLen, printerMsg, output_msg); // Hex String으로 변환 (DLL 제공)
+            sendData += System.Text.Encoding.Default.GetString(output_msg).Trim('\0'); // Hex String 데이터 크기 만큼 자르기
+
+            // Paper Cutting
+            sendData += "1b69";
+
+            // 프린터출력
+            SPCNSecuCAT_Print(comport, baudrate, sendData, System.Text.Encoding.Default.GetByteCount(sendData), 1);
+        }
+#endregion
+
     }
+
+
 
 
     public class ChromeAPI
